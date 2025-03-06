@@ -80,7 +80,7 @@ class _EcoDiveHomePageState extends State<EcoDiveHomePage> {
   Widget _buildHeroSection(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
-      color: Colors.black,
+//      color: Colors.black,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
