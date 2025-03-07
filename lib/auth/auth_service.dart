@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'auth_form.dart';
 
-class AuthService {
+class AuthService with ChangeNotifier {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: "161632162529-vn1aqdd2f9nkj3ocvinadg0cah9n787l.apps.googleusercontent.com",
     scopes: ['email', 'profile'],
@@ -13,17 +13,22 @@ class AuthService {
 
   String? _userName;
   String? _userEmail;
-  bool _isLoading = false; // 로딩 상태 추가
+  bool _isLoading = false;
 
   bool get isLoggedIn => _userName != null && _userEmail != null;
   String? get userName => _userName;
   String? get userEmail => _userEmail;
-  bool get isLoading => _isLoading; // 로딩 상태 getter
+  bool get isLoading => _isLoading;
+
+  AuthService() {
+    loadUserData();
+  }
 
   Future<void> loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     _userName = prefs.getString('userName');
     _userEmail = prefs.getString('userEmail');
+    notifyListeners();
   }
 
   Future<void> saveUserData(String name, String email) async {
@@ -34,12 +39,14 @@ class AuthService {
 
   Future<void> signInWithGoogle(BuildContext context) async {
     _isLoading = true;
+    notifyListeners();
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
         print("Google Sign-In cancelled.");
         _isLoading = false;
+        notifyListeners();
         return;
       }
 
@@ -55,12 +62,7 @@ class AuthService {
         }),
       );
 
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        _userName = data['user']['name'];
-        _userEmail = data['user']['email'];
-        await saveUserData(_userName!, _userEmail!);
-      } else if (response.statusCode == 409) {
+      if (response.statusCode == 201 || response.statusCode == 409) {
         _userName = googleUser.displayName;
         _userEmail = googleUser.email;
         await saveUserData(_userName!, _userEmail!);
@@ -74,11 +76,13 @@ class AuthService {
       );
     } finally {
       _isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<void> signOut() async {
     _isLoading = true;
+    notifyListeners();
     try {
       await _googleSignIn.signOut();
       final prefs = await SharedPreferences.getInstance();
@@ -91,48 +95,15 @@ class AuthService {
       print("Sign-Out Error: $error");
     } finally {
       _isLoading = false;
-    }
-  }
-
-  Future<void> signUpWithEmail(String email, String password, BuildContext context) async {
-    _isLoading = true;
-    try {
-      final response = await http.post(
-        Uri.parse("http://localhost:5000/api/auth/signup"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "email": email,
-          "password": password,
-          "name": email.split('@')[0],
-        }),
-      );
-
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        _userName = data['user']['name'];
-        _userEmail = email;
-        await saveUserData(_userName!, _userEmail!);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Sign-Up successful!")),
-        );
-      } else if (response.statusCode == 409) {
-        throw Exception("Email already exists. Please sign in or use a different email.");
-      } else {
-        throw Exception("Sign-Up failed: ${response.body}");
-      }
-    } catch (error) {
-      print("Email Sign-Up Error: $error");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sign-Up Error: $error")),
-      );
-    } finally {
-      _isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<void> signInWithEmail(String email, String password, BuildContext context) async {
     _isLoading = true;
+    notifyListeners();
     try {
+      print("SignIn Request: email=$email, password=$password");
       final response = await http.post(
         Uri.parse("http://localhost:5000/api/auth/signin"),
         headers: {"Content-Type": "application/json"},
@@ -154,26 +125,43 @@ class AuthService {
       }
     } catch (error) {
       print("Email Sign-In Error: $error");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sign-In Error: $error")),
-      );
+      throw error;
     } finally {
       _isLoading = false;
+      notifyListeners();
     }
   }
 
-  Future<void> sendUserDataToBackend(String email, String authType) async {
+  Future<void> signUpWithEmail(String email, String password, BuildContext context) async {
+    _isLoading = true;
+    notifyListeners();
     try {
-      final response = await http.get(
-        Uri.parse("http://localhost:5000/api/auth/user"),
-        headers: {"X-User-Email": email},
+      final response = await http.post(
+        Uri.parse("http://localhost:5000/api/auth/signup"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "password": password,
+          "name": email.split('@')[0],
+        }),
       );
 
-      if (response.statusCode != 200) {
-        print("Failed to send user data to backend: ${response.body}");
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        _userName = data['user']['name'];
+        _userEmail = email;
+        await saveUserData(_userName!, _userEmail!);
+      } else if (response.statusCode == 409) {
+        throw Exception("Email already exists.");
+      } else {
+        throw Exception("Sign-Up failed: ${response.body}");
       }
-    } catch (e) {
-      print("Error sending user data to backend: $e");
+    } catch (error) {
+      print("Email Sign-Up Error: $error");
+      throw error;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -188,70 +176,29 @@ class AuthService {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Confirm Delete',
-          style: TextStyle(
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to delete the account for ${_userEmail}? This action cannot be undone.',
-          style: TextStyle(
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
+        title: Text('Confirm Delete'),
+        content: Text('Are you sure you want to delete the account for $_userEmail?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: Colors.white, width: 2),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: Text(
-              'Delete',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            child: Text('Delete'),
           ),
         ],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        backgroundColor: Colors.white,
       ),
     );
 
     if (confirm == true) {
       _isLoading = true;
+      notifyListeners();
       try {
         final response = await http.delete(
           Uri.parse("http://localhost:5000/api/auth/delete-user"),
           headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "email": _userEmail,
-          }),
+          body: jsonEncode({"email": _userEmail}),
         );
 
         if (response.statusCode == 200) {
@@ -269,128 +216,89 @@ class AuthService {
         );
       } finally {
         _isLoading = false;
+        notifyListeners();
       }
     }
-  }
-
-  void showAccountNotFoundDialog(String email, BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Account Not Found',
-          style: TextStyle(
-            fontFamily: 'Roboto',
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'The email "$email" is not registered.',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Would you like to create a new account?',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        backgroundColor: Colors.white,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.black,
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: Text(
-              'No',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              showAuthDialog(context, switchToSignUp: true, prefillEmail: email);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: Colors.white, width: 2),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: Text(
-              'Yes, Sign Up',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   void showAuthDialog(BuildContext context, {bool switchToSignUp = false, String? prefillEmail}) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Sign Up / Sign In',
-          style: TextStyle(
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+      builder: (context) => Theme(
+        data: ThemeData.light().copyWith(
+          scaffoldBackgroundColor: Colors.white,
+          dialogBackgroundColor: Colors.white,
+          textTheme: TextTheme(
+            bodyMedium: TextStyle(color: Colors.black),
           ),
         ),
-        content: AuthForm(
-          onSignUp: (email, password) => signUpWithEmail(email, password, context),
-          onSignIn: (email, password) => signInWithEmail(email, password, context),
-          initialSignUp: switchToSignUp,
-          prefillEmail: prefillEmail,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
+        child: AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Text(
+            switchToSignUp ? 'Sign Up' : 'Sign In',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
           ),
-        ],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          content: SizedBox(
+            width: 300,
+            child: AuthForm(
+              onSignUp: (email, password) => signUpWithEmail(email, password, context),
+              onSignIn: (email, password) => signInWithEmail(email, password, context),
+              initialSignUp: switchToSignUp,
+              prefillEmail: prefillEmail,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+          ],
         ),
-        backgroundColor: Colors.white,
+      ),
+    );
+  }
+
+  void showAccountNotFoundDialog(String email, BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Theme(
+        data: ThemeData.light(),
+        child: AlertDialog(
+          backgroundColor: Colors.white,
+          title: Text(
+            'Account Not Found',
+            style: TextStyle(color: Colors.black),
+          ),
+          content: Text(
+            'The email "$email" is not registered. Would you like to sign up?',
+            style: TextStyle(color: Colors.black),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('No', style: TextStyle(color: Colors.blue)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                showAuthDialog(context, switchToSignUp: true, prefillEmail: email);
+              },
+              child: Text('Yes, Sign Up'),
+            ),
+          ],
+        ),
       ),
     );
   }

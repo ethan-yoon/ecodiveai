@@ -2,36 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:eco_dive_ai/auth/auth_service.dart';
 import 'package:eco_dive_ai/features/features_section.dart';
 import 'package:eco_dive_ai/utils/constants.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart'; // Provider 임포트
 
-class EcoDiveHomePage extends StatefulWidget {
-  @override
-  _EcoDiveHomePageState createState() => _EcoDiveHomePageState();
-}
-
-class _EcoDiveHomePageState extends State<EcoDiveHomePage> {
+class EcoDiveHomePage extends StatelessWidget {
   final ScrollController _scrollController = ScrollController();
-  bool _isScrolled = false;
-  final AuthService _authService = AuthService();
 
-  @override
-  void initState() {
-    super.initState();
+  EcoDiveHomePage({super.key}) {
     _scrollController.addListener(() {
-      setState(() {
-        _isScrolled = _scrollController.offset > 50;
-      });
+      // 스크롤 상태는 Consumer 내부에서 관리
     });
-    _authService.loadUserData().then((_) => setState(() {}));
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _scrollToSection(int index) {
+  void _scrollToSection(int index, BuildContext context) {
     double offset;
     switch (index) {
       case 0:
@@ -77,10 +59,9 @@ class _EcoDiveHomePageState extends State<EcoDiveHomePage> {
     );
   }
 
-  Widget _buildHeroSection(BuildContext context) {
+  Widget _buildHeroSection(BuildContext context, AuthService authService) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
-//      color: Colors.black,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -111,11 +92,11 @@ class _EcoDiveHomePageState extends State<EcoDiveHomePage> {
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 32),
-            if (!_authService.isLoggedIn) // 로그인되지 않은 상태에서만 버튼 표시
+            if (!authService.isLoggedIn)
               Column(
                 children: [
                   ElevatedButton(
-                    onPressed: () => _authService.signInWithGoogle(context),
+                    onPressed: () => authService.signInWithGoogle(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
@@ -136,7 +117,7 @@ class _EcoDiveHomePageState extends State<EcoDiveHomePage> {
                   ),
                   SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => _authService.showAuthDialog(context),
+                    onPressed: () => authService.showAuthDialog(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
@@ -161,7 +142,7 @@ class _EcoDiveHomePageState extends State<EcoDiveHomePage> {
               Column(
                 children: [
                   Text(
-                    'Welcome, ${_authService.userName}!',
+                    'Welcome, ${authService.userName}!',
                     style: TextStyle(
                       fontFamily: 'Roboto',
                       fontSize: 24,
@@ -171,7 +152,7 @@ class _EcoDiveHomePageState extends State<EcoDiveHomePage> {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    'Email: ${_authService.userEmail}',
+                    'Email: ${authService.userEmail}',
                     style: TextStyle(
                       fontFamily: 'Roboto',
                       fontSize: 18,
@@ -386,75 +367,82 @@ class _EcoDiveHomePageState extends State<EcoDiveHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(AppConstants.oceanBackgroundAsset),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.7), BlendMode.dstATop),
-              ),
-            ),
-          ),
-          if (_authService.isLoading) // AuthService에서 로딩 상태 가져오기
-            Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
-          SingleChildScrollView(
-            controller: _scrollController,
-            child: Column(
-              children: [
-                _buildHeroSection(context),
-                _buildAboutSection(),
-                if (_authService.isLoggedIn) FeaturesSection(),
-                _buildCommunitySection(),
-                _buildContactSection(),
-                _buildFooter(),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: AppBar(
-              backgroundColor: _isScrolled ? AppConstants.primaryColor : Colors.transparent,
-              elevation: _isScrolled ? 4 : 0,
-              title: Text(
-                'EcoDive AI',
-                style: TextStyle(
-                  fontFamily: 'Roboto',
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+    return Consumer<AuthService>(
+      builder: (context, authService, child) {
+        final isScrolled = _scrollController.hasClients && _scrollController.offset > 50;
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(AppConstants.oceanBackgroundAsset),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.7), BlendMode.dstATop),
+                  ),
                 ),
               ),
-              actions: [
-                if (_authService.isLoggedIn)
-                  IconButton(
-                    icon: Icon(Icons.logout),
-                    onPressed: () => _authService.signOut(),
-                    tooltip: "Sign Out",
+              if (authService.isLoading)
+                Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              SingleChildScrollView(
+                controller: _scrollController,
+                child: Column(
+                  children: [
+                    _buildHeroSection(context, authService),
+                    _buildAboutSection(),
+                    if (authService.isLoggedIn) FeaturesSection(),
+                    _buildCommunitySection(),
+                    _buildContactSection(),
+                    _buildFooter(),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: AppBar(
+                  backgroundColor: isScrolled ? AppConstants.primaryColor : Colors.transparent,
+                  elevation: isScrolled ? 4 : 0,
+                  title: Text(
+                    'EcoDive AI',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                if (_authService.isLoggedIn)
-                  IconButton(
-                    icon: Icon(Icons.delete),
-                    onPressed: () => _authService.deleteUser(context),
-                    tooltip: "Delete Account",
-                  ),
-                _buildNavItem(context, 'Home', () => _scrollToSection(0)),
-                _buildNavItem(context, 'About', () => _scrollToSection(1)),
-                if (_authService.isLoggedIn) _buildNavItem(context, 'Features', () => _scrollToSection(2)),
-                _buildNavItem(context, 'Community', () => _scrollToSection(3)),
-                _buildNavItem(context, 'Contact', () => _scrollToSection(4)),
-              ],
-            ),
+                  actions: [
+                    if (authService.isLoggedIn)
+                      IconButton(
+                        icon: Icon(Icons.logout),
+                        onPressed: () => authService.signOut(),
+                        tooltip: "Sign Out",
+                      ),
+                    if (authService.isLoggedIn)
+                      IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () => authService.deleteUser(context),
+                        tooltip: "Delete Account",
+                      ),
+                    _buildNavItem(context, 'Home', () => _scrollToSection(0, context)),
+                    _buildNavItem(context, 'About', () => _scrollToSection(1, context)),
+                    if (authService.isLoggedIn)
+                      _buildNavItem(context, 'Features', () => _scrollToSection(2, context)),
+                    _buildNavItem(context, 'Community', () => _scrollToSection(3, context)),
+                    _buildNavItem(context, 'Contact', () => _scrollToSection(4, context)),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

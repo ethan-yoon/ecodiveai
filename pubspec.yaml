@@ -35,6 +35,11 @@ dependencies:
   google_sign_in_web: ^0.12.0+2  # 최신 버전 확인
   google_fonts: ^4.0.4
   shared_preferences: ^2.2.2  # 로컬 저장소
+  provider: ^6.1.2  # 최신 버전
+
+  speech_to_text: ^6.1.1
+  speech_to_text_platform_interface: ^2.2.0
+  table_calendar: ^3.0.0
   
   #firebase_core: ^2.24.2  # Firebase 초기화
   #firebase_auth: ^4.16.0  # 이메일/비밀번호 인증

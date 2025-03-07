@@ -24,6 +24,7 @@ class _AuthFormState extends State<AuthForm> {
   String _email = '';
   String _password = '';
   bool _isSignUp = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -48,14 +49,19 @@ class _AuthFormState extends State<AuthForm> {
               labelStyle: TextStyle(
                 fontFamily: 'Roboto',
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: Colors.black87,
               ),
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey),
+              ),
+              filled: true,
+              fillColor: Colors.white,
               hintText: 'Enter your email',
               hintStyle: TextStyle(
                 fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
+                fontWeight: FontWeight.normal,
+                color: Colors.grey,
               ),
             ),
             keyboardType: TextInputType.emailAddress,
@@ -65,7 +71,7 @@ class _AuthFormState extends State<AuthForm> {
               }
               return null;
             },
-            onSaved: (value) => _email = value!,
+            onSaved: (value) => _email = value!.trim(),
             style: TextStyle(
               fontFamily: 'Roboto',
               fontWeight: FontWeight.bold,
@@ -80,14 +86,19 @@ class _AuthFormState extends State<AuthForm> {
               labelStyle: TextStyle(
                 fontFamily: 'Roboto',
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: Colors.black87,
               ),
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey),
+              ),
+              filled: true,
+              fillColor: Colors.white,
               hintText: 'Enter your password',
               hintStyle: TextStyle(
                 fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
+                fontWeight: FontWeight.normal,
+                color: Colors.grey,
               ),
             ),
             obscureText: true,
@@ -97,7 +108,7 @@ class _AuthFormState extends State<AuthForm> {
               }
               return null;
             },
-            onSaved: (value) => _password = value!,
+            onSaved: (value) => _password = value!.trim(),
             style: TextStyle(
               fontFamily: 'Roboto',
               fontWeight: FontWeight.bold,
@@ -106,35 +117,48 @@ class _AuthFormState extends State<AuthForm> {
             ),
           ),
           SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                _formKey.currentState!.save();
-                if (_isSignUp) {
-                  await widget.onSignUp(_email, _password);
-                } else {
-                  await widget.onSignIn(_email, _password);
-                }
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: Colors.white, width: 2),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            ),
-            child: Text(
-              _isSignUp ? 'Sign Up' : 'Sign In',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          _isLoading
+              ? CircularProgressIndicator()
+              : ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      _formKey.currentState!.save();
+                      setState(() => _isLoading = true);
+                      try {
+                        if (_isSignUp) {
+                          await widget.onSignUp(_email, _password);
+                        } else {
+                          await widget.onSignIn(_email, _password);
+                        }
+                        if (mounted) Navigator.pop(context);
+                      } catch (error) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $error')),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _isLoading = false);
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  ),
+                  child: Text(
+                    _isSignUp ? 'Sign Up' : 'Sign In',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+          SizedBox(height: 10),
           TextButton(
             onPressed: () {
               setState(() {
@@ -146,7 +170,7 @@ class _AuthFormState extends State<AuthForm> {
               style: TextStyle(
                 fontFamily: 'Roboto',
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: Colors.blue,
               ),
             ),
           ),

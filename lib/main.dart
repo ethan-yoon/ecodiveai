@@ -1,9 +1,17 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:eco_dive_ai/pages/home_page.dart'; // 홈 페이지 임포트
+import 'package:eco_dive_ai/pages/home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'auth/auth_service.dart'; // 경로 수정
 
 void main() {
-  runApp(EcoDiveAIApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AuthService(),
+      child: EcoDiveAIApp(),
+    ),
+  );
 }
 
 class EcoDiveAIApp extends StatelessWidget {
@@ -13,7 +21,7 @@ class EcoDiveAIApp extends StatelessWidget {
       title: 'EcoDive AI',
       theme: ThemeData(
         brightness: Brightness.light,
-        primaryColor: Colors.blue, // 상수로 이동 가능
+        primaryColor: Colors.blue,
         scaffoldBackgroundColor: Colors.transparent,
         textTheme: TextTheme(
           headlineLarge: TextStyle(
