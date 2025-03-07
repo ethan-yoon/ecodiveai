@@ -99,8 +99,11 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // 전체 배경을 흰색으로 설정
       appBar: AppBar(
         title: Text('Dive Log'),
+        backgroundColor: Colors.blue, // AppBar 색상 명확히 지정
+        foregroundColor: Colors.white, // AppBar 텍스트/아이콘 색상 흰색
       ),
       body: Column(
         children: [
@@ -109,7 +112,10 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("View Mode:"),
+                Text(
+                  "View Mode:",
+                  style: TextStyle(color: Colors.black),
+                ),
                 ToggleButtons(
                   children: [Icon(Icons.calendar_today), Icon(Icons.list)],
                   isSelected: [_isCalendarView, !_isCalendarView],
@@ -118,11 +124,13 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
                       _isCalendarView = index == 0;
                     });
                   },
+                  color: Colors.black, // 비활성 아이콘 색상
+                  selectedColor: Colors.blue, // 활성 아이콘 색상
+                  fillColor: Colors.blue.withOpacity(0.1), // 선택 배경
                 ),
               ],
             ),
           ),
-          // 캘린더 뷰일 때만 년월 표시
           if (_isCalendarView)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -139,64 +147,74 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
             child: _isCalendarView
                 ? Column(
                     children: [
-                      TableCalendar<Map<String, String>>(
-                        firstDay: DateTime.utc(2020, 1, 1),
-                        lastDay: DateTime.utc(2030, 12, 31),
-                        focusedDay: _focusedDay,
-                        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                        onDaySelected: (selectedDay, focusedDay) {
-                          setState(() {
-                            _selectedDay = selectedDay;
-                            _focusedDay = focusedDay;
-                            _selectedEvents.value = _getEventsForDay(selectedDay);
-                          });
-                        },
-                        onPageChanged: (focusedDay) {
-                          setState(() {
-                            _focusedDay = focusedDay;
-                          });
-                        },
-                        calendarFormat: CalendarFormat.month,
-                        availableCalendarFormats: const {
-                          CalendarFormat.month: 'Month',
-                        },
-                        headerStyle: HeaderStyle(
-                          formatButtonVisible: false,
-                        ),
-                        eventLoader: _getEventsForDay,
-                        calendarStyle: CalendarStyle(
-                          defaultTextStyle: TextStyle(color: Colors.black),
-                          weekendTextStyle: TextStyle(color: Colors.red),
-                          todayTextStyle: TextStyle(color: Colors.white),
-                          todayDecoration: BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                          ),
-                          selectedTextStyle: TextStyle(color: Colors.white),
-                          selectedDecoration: BoxDecoration(
-                            color: Colors.green,
-                            shape: BoxShape.circle,
-                          ),
-                          outsideTextStyle: TextStyle(color: Colors.grey),
-                        ),
-                        calendarBuilders: CalendarBuilders(
-                          markerBuilder: (context, date, events) {
-                            if (events.isNotEmpty) {
-                              return Positioned(
-                                right: 1,
-                                bottom: 1,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                              );
-                            }
-                            return null;
+                      Container(
+                        color: Colors.white, // TableCalendar 배경 명시적으로 흰색
+                        padding: EdgeInsets.all(8.0),
+                        child: TableCalendar<Map<String, String>>(
+                          firstDay: DateTime.utc(2020, 1, 1),
+                          lastDay: DateTime.utc(2030, 12, 31),
+                          focusedDay: _focusedDay,
+                          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                          onDaySelected: (selectedDay, focusedDay) {
+                            setState(() {
+                              _selectedDay = selectedDay;
+                              _focusedDay = focusedDay;
+                              _selectedEvents.value = _getEventsForDay(selectedDay);
+                            });
                           },
+                          onPageChanged: (focusedDay) {
+                            setState(() {
+                              _focusedDay = focusedDay;
+                            });
+                          },
+                          calendarFormat: CalendarFormat.month,
+                          availableCalendarFormats: const {
+                            CalendarFormat.month: 'Month',
+                          },
+                          headerStyle: HeaderStyle(
+                            formatButtonVisible: false,
+                            titleTextStyle: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            leftChevronIcon: Icon(Icons.chevron_left, color: Colors.black),
+                            rightChevronIcon: Icon(Icons.chevron_right, color: Colors.black),
+                          ),
+                          eventLoader: _getEventsForDay,
+                          calendarStyle: CalendarStyle(
+                            defaultTextStyle: TextStyle(color: Colors.black),
+                            weekendTextStyle: TextStyle(color: Colors.red),
+                            todayTextStyle: TextStyle(color: Colors.white),
+                            todayDecoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                            selectedTextStyle: TextStyle(color: Colors.white),
+                            selectedDecoration: BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                            outsideTextStyle: TextStyle(color: Colors.grey),
+                          ),
+                          calendarBuilders: CalendarBuilders(
+                            markerBuilder: (context, date, events) {
+                              if (events.isNotEmpty) {
+                                return Positioned(
+                                  right: 1,
+                                  bottom: 1,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return null;
+                            },
+                          ),
                         ),
                       ),
                       Expanded(
@@ -204,17 +222,28 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
                           valueListenable: _selectedEvents,
                           builder: (context, events, _) {
                             if (events.isEmpty) {
-                              return Center(child: Text('No dive logs for this day.'));
+                              return Center(
+                                child: Text(
+                                  'No dive logs for this day.',
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                              );
                             }
                             return ListView.builder(
                               itemCount: events.length,
                               itemBuilder: (context, index) {
                                 final log = events[index];
                                 return ListTile(
-                                  title: Text('${log['region']} - ${log['depth']} - ${log['time']}'),
-                                  subtitle: Text('Notes: ${log['notes']}'),
+                                  title: Text(
+                                    '${log['region']} - ${log['depth']} - ${log['time']}',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
+                                  subtitle: Text(
+                                    'Notes: ${log['notes']}',
+                                    style: TextStyle(color: Colors.black54),
+                                  ),
                                   trailing: IconButton(
-                                    icon: Icon(Icons.edit),
+                                    icon: Icon(Icons.edit, color: Colors.blue),
                                     onPressed: () => _showEditLogDialog(context, index, log),
                                   ),
                                 );
@@ -233,6 +262,10 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
             padding: const EdgeInsets.all(8.0),
             child: ElevatedButton(
               onPressed: () => _showAddLogDialog(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
               child: Text('Add Dive Log'),
             ),
           ),
@@ -243,7 +276,7 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
 
   List<Widget> _buildDiveLogList() {
     Map<String, List<MapEntry<DateTime, List<Map<String, String>>>>> groupedLogs = {};
-    
+
     _diveLogs.forEach((date, logs) {
       String yearMonth = DateFormat('yyyy-MM').format(date);
       if (!groupedLogs.containsKey(yearMonth)) {
@@ -253,10 +286,9 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
     });
 
     List<Widget> widgets = [];
-    
-    var sortedKeys = groupedLogs.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
-    
+
+    var sortedKeys = groupedLogs.keys.toList()..sort((a, b) => b.compareTo(a));
+
     for (String yearMonth in sortedKeys) {
       widgets.add(
         Padding(
@@ -271,16 +303,21 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
           ),
         ),
       );
-      
-      var entries = groupedLogs[yearMonth]!
-        ..sort((a, b) => b.key.compareTo(a.key));
-      
+
+      var entries = groupedLogs[yearMonth]!..sort((a, b) => b.key.compareTo(a.key));
+
       for (var entry in entries) {
         for (var log in entry.value) {
           widgets.add(
             ListTile(
-              title: Text('${DateFormat('dd').format(entry.key)} - ${log['region']} - ${log['depth']} - ${log['time']}'),
-              subtitle: Text('Notes: ${log['notes']}'),
+              title: Text(
+                '${DateFormat('dd').format(entry.key)} - ${log['region']} - ${log['depth']} - ${log['time']}',
+                style: TextStyle(color: Colors.black),
+              ),
+              subtitle: Text(
+                'Notes: ${log['notes']}',
+                style: TextStyle(color: Colors.black54),
+              ),
               onTap: () => _showEditLogDialog(
                 context,
                 entry.value.indexOf(log),
@@ -291,7 +328,7 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
         }
       }
     }
-    
+
     return widgets;
   }
 
@@ -306,27 +343,55 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Add Dive Log'),
+          backgroundColor: Colors.white, // 다이얼로그 배경 흰색
+          title: Text(
+            'Add Dive Log',
+            style: TextStyle(color: Colors.black),
+          ),
           content: SingleChildScrollView(
             child: Column(
               children: [
-                TextField(controller: _regionController, decoration: InputDecoration(hintText: 'Enter region')),
-                TextField(controller: _depthController, decoration: InputDecoration(hintText: 'Enter depth')),
-                TextField(controller: _timeController, decoration: InputDecoration(hintText: 'Enter time')),
-                TextField(controller: _notesController, decoration: InputDecoration(hintText: 'Enter notes')),
+                TextField(
+                  controller: _regionController,
+                  decoration: InputDecoration(hintText: 'Enter region'),
+                  style: TextStyle(color: Colors.black),
+                ),
+                TextField(
+                  controller: _depthController,
+                  decoration: InputDecoration(hintText: 'Enter depth'),
+                  style: TextStyle(color: Colors.black),
+                ),
+                TextField(
+                  controller: _timeController,
+                  decoration: InputDecoration(hintText: 'Enter time'),
+                  style: TextStyle(color: Colors.black),
+                ),
+                TextField(
+                  controller: _notesController,
+                  decoration: InputDecoration(hintText: 'Enter notes'),
+                  style: TextStyle(color: Colors.black),
+                ),
                 SizedBox(height: 10),
                 ElevatedButton(
                   onPressed: _toggleListening,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
                   child: Text(_isListening ? 'Stop Recording' : 'Start Recording'),
                 ),
-                if (_voiceMemo.isNotEmpty) Text(_voiceMemo),
+                if (_voiceMemo.isNotEmpty)
+                  Text(
+                    _voiceMemo,
+                    style: TextStyle(color: Colors.black),
+                  ),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
+              child: Text('Cancel', style: TextStyle(color: Colors.blue)),
             ),
             TextButton(
               onPressed: () {
@@ -347,7 +412,7 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
                 }
                 Navigator.of(context).pop();
               },
-              child: Text('Save'),
+              child: Text('Save', style: TextStyle(color: Colors.blue)),
             ),
           ],
         );
@@ -366,27 +431,55 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Edit Dive Log'),
+          backgroundColor: Colors.white, // 다이얼로그 배경 흰색
+          title: Text(
+            'Edit Dive Log',
+            style: TextStyle(color: Colors.black),
+          ),
           content: SingleChildScrollView(
             child: Column(
               children: [
-                TextField(controller: _regionController, decoration: InputDecoration(hintText: 'Enter region')),
-                TextField(controller: _depthController, decoration: InputDecoration(hintText: 'Enter depth')),
-                TextField(controller: _timeController, decoration: InputDecoration(hintText: 'Enter time')),
-                TextField(controller: _notesController, decoration: InputDecoration(hintText: 'Enter notes')),
+                TextField(
+                  controller: _regionController,
+                  decoration: InputDecoration(hintText: 'Enter region'),
+                  style: TextStyle(color: Colors.black),
+                ),
+                TextField(
+                  controller: _depthController,
+                  decoration: InputDecoration(hintText: 'Enter depth'),
+                  style: TextStyle(color: Colors.black),
+                ),
+                TextField(
+                  controller: _timeController,
+                  decoration: InputDecoration(hintText: 'Enter time'),
+                  style: TextStyle(color: Colors.black),
+                ),
+                TextField(
+                  controller: _notesController,
+                  decoration: InputDecoration(hintText: 'Enter notes'),
+                  style: TextStyle(color: Colors.black),
+                ),
                 SizedBox(height: 10),
                 ElevatedButton(
                   onPressed: _toggleListening,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
                   child: Text(_isListening ? 'Stop Recording' : 'Start Recording'),
                 ),
-                if (_voiceMemo.isNotEmpty) Text(_voiceMemo),
+                if (_voiceMemo.isNotEmpty)
+                  Text(
+                    _voiceMemo,
+                    style: TextStyle(color: Colors.black),
+                  ),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
+              child: Text('Cancel', style: TextStyle(color: Colors.blue)),
             ),
             TextButton(
               onPressed: () {
@@ -407,7 +500,7 @@ class _DiveLogPageState extends State<DiveLogAnalyticsPage> {
                 }
                 Navigator.of(context).pop();
               },
-              child: Text('Save'),
+              child: Text('Save', style: TextStyle(color: Colors.blue)),
             ),
           ],
         );

@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:eco_dive_ai/auth/auth_service.dart';
 import 'package:eco_dive_ai/features/features_section.dart';
 import 'package:eco_dive_ai/utils/constants.dart';
-import 'package:provider/provider.dart'; // Provider 임포트
+import 'package:provider/provider.dart';
 
 class EcoDiveHomePage extends StatelessWidget {
   final ScrollController _scrollController = ScrollController();
 
   EcoDiveHomePage({super.key}) {
-    _scrollController.addListener(() {
-      // 스크롤 상태는 Consumer 내부에서 관리
-    });
+    _scrollController.addListener(() {});
   }
 
   void _scrollToSection(int index, BuildContext context) {
@@ -43,7 +41,7 @@ class EcoDiveHomePage extends StatelessWidget {
 
   Widget _buildNavItem(BuildContext context, String title, VoidCallback onTap) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 8),
       child: TextButton(
         onPressed: onTap,
         child: Text(
@@ -408,34 +406,36 @@ class EcoDiveHomePage extends StatelessWidget {
                 child: AppBar(
                   backgroundColor: isScrolled ? AppConstants.primaryColor : Colors.transparent,
                   elevation: isScrolled ? 4 : 0,
-                  title: Text(
-                    'EcoDive AI',
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                   actions: [
-                    if (authService.isLoggedIn)
-                      IconButton(
-                        icon: Icon(Icons.logout),
-                        onPressed: () => authService.signOut(),
-                        tooltip: "Sign Out",
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      height: 56,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        shrinkWrap: true,
+                        physics: AlwaysScrollableScrollPhysics(),
+                        children: [
+                          if (authService.isLoggedIn)
+                            IconButton(
+                              icon: Icon(Icons.logout, color: Colors.white), // 하얀색으로 변경
+                              onPressed: () => authService.signOut(),
+                              tooltip: "Sign Out",
+                            ),
+                          if (authService.isLoggedIn)
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.white), // 하얀색으로 변경
+                              onPressed: () => authService.deleteUser(context),
+                              tooltip: "Delete Account",
+                            ),
+                          _buildNavItem(context, 'Home', () => _scrollToSection(0, context)),
+                          _buildNavItem(context, 'About', () => _scrollToSection(1, context)),
+                          if (authService.isLoggedIn)
+                            _buildNavItem(context, 'Features', () => _scrollToSection(2, context)),
+                          _buildNavItem(context, 'Community', () => _scrollToSection(3, context)),
+                          _buildNavItem(context, 'Contact', () => _scrollToSection(4, context)),
+                        ],
                       ),
-                    if (authService.isLoggedIn)
-                      IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () => authService.deleteUser(context),
-                        tooltip: "Delete Account",
-                      ),
-                    _buildNavItem(context, 'Home', () => _scrollToSection(0, context)),
-                    _buildNavItem(context, 'About', () => _scrollToSection(1, context)),
-                    if (authService.isLoggedIn)
-                      _buildNavItem(context, 'Features', () => _scrollToSection(2, context)),
-                    _buildNavItem(context, 'Community', () => _scrollToSection(3, context)),
-                    _buildNavItem(context, 'Contact', () => _scrollToSection(4, context)),
+                    ),
                   ],
                 ),
               ),
