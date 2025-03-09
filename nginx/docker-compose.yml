@@ -1,0 +1,19 @@
+version: '3'
+services:
+  frontend:
+    build: ./ecodiveai_web
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    volumes:
+      - ./ecodiveai_web/certs:/etc/nginx/certs
+
+  backend:
+    build: ./ecodiveai_backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./ecodiveai_backend/certs:/app/certs
+
