@@ -11,6 +11,8 @@ class AuthService with ChangeNotifier {
     scopes: ['email', 'profile'],
   );
 
+  String BackendUrl = "https://ecodiveai.duckdns.org:5000";
+
   String? _userName;
   String? _userEmail;
   bool _isLoading = false;
@@ -54,7 +56,7 @@ class AuthService with ChangeNotifier {
       _userEmail = googleUser.email;
 
       final response = await http.post(
-        Uri.parse("http://localhost:5000/api/auth/google-signup"),
+        Uri.parse(BackendUrl+"/api/auth/google-signup"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _userEmail,
@@ -105,7 +107,7 @@ class AuthService with ChangeNotifier {
     try {
       print("SignIn Request: email=$email, password=$password");
       final response = await http.post(
-        Uri.parse("http://localhost:5000/api/auth/signin"),
+        Uri.parse(BackendUrl+"/api/auth/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,
@@ -137,7 +139,7 @@ class AuthService with ChangeNotifier {
     notifyListeners();
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:5000/api/auth/signup"),
+        Uri.parse(BackendUrl+"/api/auth/signup"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,
@@ -196,7 +198,7 @@ class AuthService with ChangeNotifier {
       notifyListeners();
       try {
         final response = await http.delete(
-          Uri.parse("http://localhost:5000/api/auth/delete-user"),
+          Uri.parse(BackendUrl+"/api/auth/delete-user"),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode({"email": _userEmail}),
         );
