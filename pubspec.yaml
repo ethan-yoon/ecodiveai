@@ -41,6 +41,9 @@ dependencies:
   speech_to_text_platform_interface: ^2.2.0
   table_calendar: ^3.0.0
   
+  weather_icons: ^3.0.0
+  flutter_secure_storage: ^9.0.0
+
   #firebase_core: ^2.24.2  # Firebase 초기화
   #firebase_auth: ^4.16.0  # 이메일/비밀번호 인증
   #firebase_auth_web: ^5.7.0

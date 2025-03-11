@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'auth_form.dart';
@@ -11,10 +12,13 @@ class AuthService with ChangeNotifier {
     scopes: ['email', 'profile'],
   );
 
-  String BackendUrl = "https://ecodiveai.duckdns.org:5000";
+  final _storage = const FlutterSecureStorage();
+  //String BackendUrl = "http://localhost:5000";
+  String BackendUrl = "http://ecodiveai.duckdns.org:5000";
 
   String? _userName;
   String? _userEmail;
+  String? _lastUsedEmail;
   bool _isLoading = false;
 
   bool get isLoggedIn => _userName != null && _userEmail != null;
@@ -30,13 +34,18 @@ class AuthService with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _userName = prefs.getString('userName');
     _userEmail = prefs.getString('userEmail');
+    _lastUsedEmail = await _storage.read(key: 'emailEmail'); // 메일 계정 기준
     notifyListeners();
   }
 
-  Future<void> saveUserData(String name, String email) async {
+  Future<void> saveUserData(String name, String email, {LoginType loginType = LoginType.email}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('userName', name);
     await prefs.setString('userEmail', email);
+    final emailKey = loginType == LoginType.google ? 'googleEmail' : 'emailEmail';
+    final passwordKey = loginType == LoginType.google ? 'googlePassword' : 'emailPassword';
+    await _storage.write(key: emailKey, value: email);
+    // 비밀번호는 로그인 성공 시 저장하도록 호출부에서 처리
   }
 
   Future<void> signInWithGoogle(BuildContext context) async {
@@ -56,7 +65,7 @@ class AuthService with ChangeNotifier {
       _userEmail = googleUser.email;
 
       final response = await http.post(
-        Uri.parse(BackendUrl+"/api/auth/google-signup"),
+        Uri.parse("$BackendUrl/api/auth/google-signup"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _userEmail,
@@ -67,7 +76,7 @@ class AuthService with ChangeNotifier {
       if (response.statusCode == 201 || response.statusCode == 409) {
         _userName = googleUser.displayName;
         _userEmail = googleUser.email;
-        await saveUserData(_userName!, _userEmail!);
+        await saveUserData(_userName!, _userEmail!, loginType: LoginType.google);
       } else {
         throw Exception("Google Sign-Up failed: ${response.body}");
       }
@@ -107,7 +116,7 @@ class AuthService with ChangeNotifier {
     try {
       print("SignIn Request: email=$email, password=$password");
       final response = await http.post(
-        Uri.parse(BackendUrl+"/api/auth/signin"),
+        Uri.parse("$BackendUrl/api/auth/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,
@@ -119,7 +128,8 @@ class AuthService with ChangeNotifier {
         final data = jsonDecode(response.body);
         _userName = data['user']['name'];
         _userEmail = email;
-        await saveUserData(_userName!, _userEmail!);
+        await saveUserData(_userName!, _userEmail!, loginType: LoginType.email);
+        await _storage.write(key: 'emailPassword', value: password);
       } else if (response.statusCode == 401) {
         showAccountNotFoundDialog(email, context);
       } else {
@@ -139,7 +149,7 @@ class AuthService with ChangeNotifier {
     notifyListeners();
     try {
       final response = await http.post(
-        Uri.parse(BackendUrl+"/api/auth/signup"),
+        Uri.parse("$BackendUrl/api/auth/signup"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,
@@ -152,7 +162,8 @@ class AuthService with ChangeNotifier {
         final data = jsonDecode(response.body);
         _userName = data['user']['name'];
         _userEmail = email;
-        await saveUserData(_userName!, _userEmail!);
+        await saveUserData(_userName!, _userEmail!, loginType: LoginType.email);
+        await _storage.write(key: 'emailPassword', value: password);
       } else if (response.statusCode == 409) {
         throw Exception("Email already exists.");
       } else {
@@ -170,7 +181,7 @@ class AuthService with ChangeNotifier {
   Future<void> deleteUser(BuildContext context) async {
     if (_userEmail == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("No user is currently signed in.")),
+        const SnackBar(content: Text("No user is currently signed in.")),
       );
       return;
     }
@@ -178,16 +189,16 @@ class AuthService with ChangeNotifier {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Confirm Delete'),
+        title: const Text('Confirm Delete'),
         content: Text('Are you sure you want to delete the account for $_userEmail?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -198,15 +209,17 @@ class AuthService with ChangeNotifier {
       notifyListeners();
       try {
         final response = await http.delete(
-          Uri.parse(BackendUrl+"/api/auth/delete-user"),
+          Uri.parse("$BackendUrl/api/auth/delete-user"),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode({"email": _userEmail}),
         );
 
         if (response.statusCode == 200) {
           await signOut();
+          await _storage.delete(key: 'emailEmail');
+          await _storage.delete(key: 'emailPassword');
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Account deleted successfully")),
+            const SnackBar(content: Text("Account deleted successfully")),
           );
         } else {
           throw Exception("Delete failed: ${response.body}");
@@ -223,14 +236,14 @@ class AuthService with ChangeNotifier {
     }
   }
 
-  void showAuthDialog(BuildContext context, {bool switchToSignUp = false, String? prefillEmail}) {
+  void showAuthDialog(BuildContext context, {bool switchToSignUp = false, String? prefillEmail, LoginType loginType = LoginType.email}) {
     showDialog(
       context: context,
       builder: (context) => Theme(
         data: ThemeData.light().copyWith(
           scaffoldBackgroundColor: Colors.white,
           dialogBackgroundColor: Colors.white,
-          textTheme: TextTheme(
+          textTheme: const TextTheme(
             bodyMedium: TextStyle(color: Colors.black),
           ),
         ),
@@ -239,7 +252,7 @@ class AuthService with ChangeNotifier {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Text(
             switchToSignUp ? 'Sign Up' : 'Sign In',
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Roboto',
               fontWeight: FontWeight.bold,
               color: Colors.black,
@@ -251,13 +264,14 @@ class AuthService with ChangeNotifier {
               onSignUp: (email, password) => signUpWithEmail(email, password, context),
               onSignIn: (email, password) => signInWithEmail(email, password, context),
               initialSignUp: switchToSignUp,
-              prefillEmail: prefillEmail,
+              prefillEmail: prefillEmail ?? _lastUsedEmail,
+              loginType: loginType, // 로그인 타입 전달
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
+              child: const Text(
                 'Cancel',
                 style: TextStyle(
                   fontFamily: 'Roboto',
@@ -279,25 +293,25 @@ class AuthService with ChangeNotifier {
         data: ThemeData.light(),
         child: AlertDialog(
           backgroundColor: Colors.white,
-          title: Text(
+          title: const Text(
             'Account Not Found',
             style: TextStyle(color: Colors.black),
           ),
           content: Text(
             'The email "$email" is not registered. Would you like to sign up?',
-            style: TextStyle(color: Colors.black),
+            style: const TextStyle(color: Colors.black),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('No', style: TextStyle(color: Colors.blue)),
+              child: const Text('No', style: TextStyle(color: Colors.blue)),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                showAuthDialog(context, switchToSignUp: true, prefillEmail: email);
+                showAuthDialog(context, switchToSignUp: true, prefillEmail: email, loginType: LoginType.email);
               },
-              child: Text('Yes, Sign Up'),
+              child: const Text('Yes, Sign Up'),
             ),
           ],
         ),
